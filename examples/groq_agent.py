@@ -1,35 +1,44 @@
 from __future__ import annotations
 
 import os
+import sys
 
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+os.environ["MOCK_MODE"] = "false"
+
+from pm_mcp.tools.projects import ProjectTools
+
+
+def ask_for_input(prompt_text: str) -> str:
+    value = input(prompt_text).strip()
+    if not value:
+        raise ValueError(f"{prompt_text.strip()} cannot be empty.")
+    return value
 
 
 async def main() -> None:
-    env = os.environ.copy()
-    env.setdefault("MOCK_MODE", "true")
-    params = StdioServerParameters(
-        command="python",
-        args=["-m", "pm_mcp.server"],
-        env=env,
-    )
-    async with stdio_client(params) as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            tools = await session.list_tools()
-            print("Available tools:", [tool.name for tool in tools.tools])
+    try:
+        title = ask_for_input("Project title: ")
+        description = ask_for_input("Project description: ")
+    except ValueError as exc:
+        print(f"Input error: {exc}", file=sys.stderr)
+        raise SystemExit(1)
 
-            project_result = await session.call_tool(
-                "create_project",
-                {
-                    "name": "Restaurant Delivery Website",
-                    "description": "Create landing, ordering and checkout flows.",
-                    "priority": "HIGH",
-                    "owner_id": 1,
-                },
-            )
-            print(project_result)
+    tools = ProjectTools()
+    result = await tools.create_project(
+        name=title,
+        description=description,
+        priority="HIGH",
+        owner_id=1,
+    )
+
+    if not result.get("success"):
+        error = result.get("error", {})
+        message = error.get("message") or error.get("code") or "Unknown live API error"
+        print(f"Live project creation failed: {message}", file=sys.stderr)
+        raise SystemExit(1)
+
+    print("Project created successfully:")
+    print(result["project"])
 
 
 if __name__ == "__main__":
