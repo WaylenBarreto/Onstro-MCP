@@ -1,0 +1,264 @@
+# AI Project Manager MCP Server
+
+This repository contains a Python-based Model Context Protocol (MCP) server for an AI-powered project management assistant. It is designed to integrate with a C# / ASP.NET Core project-management backend through REST APIs while remaining fully testable in mock mode.
+
+## What the MCP does
+
+The MCP server exposes project-management capabilities to an AI agent through structured tools. It supports:
+
+- creating and updating projects
+- creating, updating, and completing tasks
+- team lookup and workload analysis
+- assignment recommendation and task assignment
+- dependency, risk, schedule, and duplicate detection
+- planning and reporting tools
+- mock mode for local development and tests
+
+The server intentionally does not talk directly to a database. In production, it calls the configured C# API via HTTP/REST.
+
+## Architecture
+
+User -> Groq AI agent -> MCP client -> Python MCP server -> HTTP/REST -> C# ASP.NET Core API -> Database
+
+The implementation separates:
+
+- MCP transport and tool registration
+- API client abstraction
+- business engines
+- models
+- repositories
+- configuration and logging
+
+## Requirements
+
+- Python 3.11+
+- MCP Python SDK
+- FastAPI (used for auxiliary HTTP and compatibility)
+- httpx
+- Pydantic / Pydantic Settings
+- python-dotenv
+- pytest / pytest-asyncio
+
+## Installation
+
+```bash
+cd ai-project-manager-mcp
+python -m venv .venv
+source .venv/bin/activate    # Linux/macOS
+# Windows PowerShell:
+# .\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+pip install -e .
+```
+
+## Configuration
+
+Copy the sample environment file:
+
+```bash
+cp .env.example .env
+```
+
+Then edit .env:
+
+```env
+PM_API_BASE_URL=http://localhost:5000/api
+PM_API_KEY=
+PM_API_TIMEOUT=30
+PM_API_RETRIES=3
+MOCK_MODE=true
+LOG_LEVEL=INFO
+```
+
+## Running in mock mode
+
+Mock mode is enabled by default via the environment configuration. It uses the in-memory repository and allows the service to be exercised without the C# backend.
+
+### Start the MCP server
+
+```bash
+export MOCK_MODE=true
+python -m pm_mcp.server
+```
+
+On Windows PowerShell:
+
+```powershell
+cd "C:\Users\Admin\Desktop\Onstro MCP"
+.\.venv\Scripts\Activate.ps1
+$env:MOCK_MODE="true"
+py -m pm_mcp.server
+```
+
+### See the response from a tool call
+
+Because this is an MCP stdio server, the response is printed by the caller, not by the server process itself. You can directly invoke the project tool from Python to see the returned payload.
+
+```powershell
+cd "C:\Users\Admin\Desktop\Onstro MCP"
+.\.venv\Scripts\python.exe -c "import asyncio; from pm_mcp.tools.projects import ProjectTools; from pm_mcp.repositories.mock_repository import MockRepository; async def main(): tools = ProjectTools(MockRepository()); result = await tools.create_project(name='Mobile App Launch', priority='HIGH', owner_id=1); print(result); asyncio.run(main())"
+```
+
+Example output:
+
+```python
+{'success': True, 'project': {'id': 1, 'name': 'Mobile App Launch', 'description': 'Plan and deliver the Mobile App Launch initiative with clear scope, milestones, ownership, and measurable outcomes. Priority: HIGH.', 'priority': 'HIGH', 'owner_id': 1}}
+```
+
+If you provide a description yourself, it is used as-is. If you omit it, the project tool now auto-generates a description from the topic name.
+
+## Connecting to the C# API
+
+Set MOCK_MODE=false and configure the C# API URL:
+
+```env
+PM_API_BASE_URL=http://localhost:5000/api
+PM_API_KEY=
+MOCK_MODE=false
+```
+
+The server will then call the documented endpoints and expect JSON responses. See docs/api-contract.md.
+
+## MCP client configuration
+
+Example configuration for a local MCP client:
+
+```json
+{
+  "mcpServers": {
+    "pm-mcp": {
+      "command": "python",
+      "args": ["-m", "pm_mcp.server"],
+      "env": {
+        "MOCK_MODE": "true"
+      }
+    }
+  }
+}
+```
+
+## Complete tool list
+
+Project tools
+- create_project
+- get_project
+- list_projects
+- update_project
+- delete_project
+
+Task tools
+- create_task
+- get_task
+- list_tasks
+- update_task
+- delete_task
+- complete_task
+- create_subtask
+
+Team tools
+- list_team_members
+- get_team_member
+- get_member_skills
+- get_member_workload
+- get_team_workload
+
+Assignment tools
+- recommend_assignee
+- assign_task
+- auto_assign_project
+
+Planning tools
+- generate_project_plan
+- recommend_project_roles
+- generate_subtasks
+
+Analytics tools
+- analyze_dependencies
+- analyze_project_risks
+- analyze_team_workload
+- rebalance_project_workload
+- analyze_schedule
+- detect_duplicate_tasks
+
+Reporting tools
+- generate_project_report
+- generate_team_report
+- generate_standup
+
+## Example conversations
+
+### Restaurant delivery launch
+
+User: "We need to build and launch a restaurant food-delivery website in 14 days. We have two developers, one designer and one QA engineer. Create the project, break it into tasks, assign the work intelligently and tell me if there are any risks."
+
+Expected flow:
+
+1. create_project
+2. generate_project_plan
+3. create_task / create_subtask
+4. list_team_members
+5. recommend_assignee
+6. assign_task
+7. analyze_schedule
+8. analyze_project_risks
+
+### Overload question
+
+User: "Who is overloaded?"
+
+Expected tool sequence:
+
+- get_team_workload
+- analyze_team_workload
+
+### Dependency question
+
+User: "What is blocking the project?"
+
+Expected tool sequence:
+
+- analyze_dependencies
+- analyze_project_risks
+
+### Task reassignment
+
+User: "Move the payment integration task to Sarah."
+
+Expected tool sequence:
+
+- get_task
+- assign_task
+
+## API contract expected from C#
+
+The C# ASP.NET Core project-management backend should expose the endpoints described in docs/api-contract.md. The server assumes documented JSON payloads and standard HTTP status codes.
+
+## Troubleshooting
+
+- If the server cannot import, reinstall the package in editable mode.
+- If the API is unavailable, check PM_API_BASE_URL and PM_API_KEY.
+- If mock mode is enabled, no C# backend is required.
+- If dependency errors occur, confirm the Python environment and installed packages.
+
+## Testing
+
+Run:
+
+```bash
+pytest -q
+```
+
+The suite includes project creation, assignment logic, risk detection, duplicate detection, schedule analysis, and dry-run validation.
+
+## Security considerations
+
+- secrets are loaded from environment variables
+- API keys are not logged
+- the service only calls the configured base URL
+- the server never accesses a database directly
+- destructive operations require explicit user confirmation at the tool layer
+
+## Example Groq client
+
+See examples/groq_agent.py for a minimal AI client pattern that selects tools and executes them through MCP.
