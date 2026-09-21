@@ -114,7 +114,7 @@ class ProjectTools:
         }
         project = await self.repository.create_project(payload)
 
-        # Auto-generate and allocate initial tasks
+        # Auto-generate and allocate initial tasks based on member workload (lowest assigned hours)
         created_tasks = []
         try:
             initial_tasks = await self._generate_initial_tasks(
@@ -122,26 +122,39 @@ class ProjectTools:
                 description=normalized_description
             )
             members = await self.repository.get_team_members()
-            member_ids = [m["id"] for m in members] if members else [1]
+            all_tasks = await self.repository.get_tasks()
             
+            # Track current assigned hours per member ID
+            member_hours = {
+                m["id"]: sum(float(t.get("estimated_hours", 0) or 0) for t in all_tasks if t.get("assignee_id") == m["id"] and t.get("status") != "DONE")
+                for m in members
+            } if members else {}
+
             for idx, task_data in enumerate(initial_tasks):
-                assignee_id = member_ids[idx % len(member_ids)] if member_ids else None
+                est_hrs = float(task_data.get("estimated_hours", 8.0))
+                # Select team member with the lowest currently assigned work hours
+                best_member_id = min(member_hours, key=member_hours.get) if member_hours else None
+
                 task_payload = {
                     "project_id": project["id"],
                     "title": task_data.get("title", f"Initial Task {idx+1}"),
-                    "description": f"Initial breakdown task generated and allocated by Onstro AI Agent for {name}.",
+                    "description": f"Initial breakdown task generated and allocated based on workload balance for {name}.",
                     "priority": task_data.get("priority", "MEDIUM"),
-                    "estimated_hours": float(task_data.get("estimated_hours", 8.0)),
-                    "assignee_id": assignee_id,
+                    "estimated_hours": est_hrs,
+                    "assignee_id": best_member_id,
                     "status": "TODO"
                 }
                 t = await self.repository.create_task(task_payload)
                 created_tasks.append(t)
+
+                if best_member_id is not None:
+                    member_hours[best_member_id] += est_hrs
         except Exception as exc:
             logger.warning("Auto task allocation failed for project %s: %s", project["id"], exc)
 
         project["tasks"] = created_tasks
         return {"success": True, "project": project, "tasks": created_tasks}
+
 
 
     async def get_project(self, *, project_id: int) -> dict[str, Any]:
