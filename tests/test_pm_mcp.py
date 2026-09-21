@@ -27,7 +27,7 @@ async def test_project_creation(repo):
     tools = ProjectTools(repo)
     result = await tools.create_project(name="Website Redesign", description="Modernize website", priority="HIGH", owner_id=1)
     assert result["success"] is True
-    assert result["project"]["name"] == "Website Redesign"
+    assert result["project"]["name"] == "🚀 Website Redesign"
 
 
 @pytest.mark.asyncio
@@ -135,6 +135,18 @@ async def test_invalid_input(repo):
 
 
 @pytest.mark.asyncio
+async def test_time_logging(repo):
+    task_tools = TaskTools(repo)
+    result = await task_tools.log_time(task_id=1, member_id=2, hours_logged=3.5, description="Implemented backend api")
+    assert result["success"] is True
+    assert result["time_log"]["hours_logged"] == 3.5
+
+    logs = await task_tools.get_time_logs(task_id=1)
+    assert logs["success"] is True
+    assert len(logs["time_logs"]) >= 1
+
+
+@pytest.mark.asyncio
 async def test_mcp_tool_registration():
     tools = await server_module.mcp.list_tools()
     names = {tool.name for tool in tools}
@@ -142,3 +154,6 @@ async def test_mcp_tool_registration():
     assert "create_task" in names
     assert "assign_task" in names
     assert "analyze_project_risks" in names
+    assert "log_time" in names
+    assert "get_time_logs" in names
+

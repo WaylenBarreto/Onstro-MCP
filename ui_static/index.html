@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onstro Insights Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=3">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar glass">
+            <div class="logo">
+                <div class="logo-icon">O</div>
+                <h1>Onstro PM</h1>
+            </div>
+            
+            <nav class="nav-menu">
+                <div class="nav-section">
+                    <h3>Members</h3>
+                    <ul id="members-list" class="nav-list">
+                        <!-- Populated by JS -->
+                        <li class="loading">Loading...</li>
+                    </ul>
+                </div>
+                
+                <div class="nav-section">
+                    <h3>Projects</h3>
+                    <ul id="projects-list" class="nav-list">
+                        <!-- Populated by JS -->
+                        <li class="loading">Loading...</li>
+                    </ul>
+                    <button id="create-project-btn" class="create-project-btn" onclick="openCreateProjectModal()">
+                        <span class="btn-icon">+</span> Create Project
+                    </button>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="topbar glass">
+                <h2 id="view-title">Dashboard Overview</h2>
+                <div class="user-profile">
+                    <span>Admin</span>
+                    <div class="avatar">A</div>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <div id="welcome-state" class="empty-state visible">
+                    <div class="icon-pulse">✨</div>
+                    <h2>Welcome to Onstro Insights</h2>
+                    <p>Select a member or project from the sidebar to view their performance insights.</p>
+                </div>
+
+                <div id="loading-state" class="empty-state">
+                    <div class="spinner"></div>
+                    <p>Gathering Insights...</p>
+                </div>
+
+                <!-- Member Insights View -->
+                <div id="member-insights" class="insights-view">
+                    <div class="profile-header glass header-flex">
+                        <div class="profile-info">
+                            <div class="profile-avatar" id="m-avatar">?</div>
+                            <div>
+                                <div class="name-flag-row">
+                                    <h2 id="m-name">Member Name</h2>
+                                    <span id="m-flag-badge" class="flagged-badge" style="display: none;">⚠️ FLAGGED</span>
+                                </div>
+                                <p id="m-role">Role</p>
+                                <p id="m-flag-reason" class="flag-reason-text" style="display: none;"></p>
+                            </div>
+                        </div>
+                        <div class="header-actions">
+                            <button type="button" class="btn btn-log-time" onclick="openLogTimeModal()">
+                                ⏱️ Log Work Time
+                            </button>
+                            <button type="button" class="btn btn-csv" onclick="downloadTeamCSV()">
+                                📥 Download CSV Report
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card glass hover-lift">
+                            <div class="stat-title">Hours Worked</div>
+                            <div class="stat-value highlight" id="m-hours-worked">0.0 hrs</div>
+                        </div>
+                        <div class="stat-card glass hover-lift">
+                            <div class="stat-title">Completion Rate</div>
+                            <div class="stat-value highlight" id="m-completion">0%</div>
+                        </div>
+                        <div class="stat-card glass hover-lift">
+                            <div class="stat-title">Completed Tasks</div>
+                            <div class="stat-value" id="m-completed">0</div>
+                        </div>
+                        <div class="stat-card glass hover-lift">
+                            <div class="stat-title">Pending Tasks</div>
+                            <div class="stat-value" id="m-pending">0</div>
+                        </div>
+                        <div class="stat-card glass hover-lift warning-card">
+                            <div class="stat-title">Overdue Tasks</div>
+                            <div class="stat-value warning" id="m-overdue">0</div>
+                        </div>
+                    </div>
+
+                    <div class="details-grid">
+                        <div class="detail-card glass">
+                            <h3>Recent Activity</h3>
+                            <ul class="activity-list" id="m-recent-activity">
+                                <!-- Populated by JS -->
+                            </ul>
+                        </div>
+                        <div class="detail-card glass">
+                            <h3>Pending Tasks</h3>
+                            <ul class="task-list" id="m-pending-tasks">
+                                <!-- Populated by JS -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Project Insights View -->
+                <div id="project-insights" class="insights-view">
+                    <div class="profile-header glass header-flex">
+                        <div>
+                            <h2 id="p-name">Project Name</h2>
+                            <p class="project-header-sub">Project Insights Dashboard</p>
+                            <div id="p-description-container" class="project-description-box" style="display: none;">
+                                <div class="desc-badge">Project Scope & Specification</div>
+                                <div id="p-description" class="project-description-text"></div>
+                            </div>
+                        </div>
+                        <div class="header-actions">
+                            <button type="button" class="btn btn-log-time" onclick="openLogTimeModal()">
+                                ⏱️ Log Work Time
+                            </button>
+                            <button type="button" class="btn btn-csv" onclick="downloadProjectCSV()">
+                                📥 Download CSV Report
+                            </button>
+                        </div>
+                    </div>
+
+
+                    <div class="stats-grid">
+                        <div class="stat-card glass hover-lift">
+                            <div class="stat-title">Overall Progress</div>
+                            <div class="stat-value highlight" id="p-completion">0%</div>
+                        </div>
+                        <div class="stat-card glass hover-lift">
+                            <div class="stat-title">Total Tasks</div>
+                            <div class="stat-value" id="p-total">0</div>
+                        </div>
+                        <div class="stat-card glass hover-lift warning-card">
+                            <div class="stat-title">Blocked Tasks</div>
+                            <div class="stat-value warning" id="p-blocked">0</div>
+                        </div>
+                        <div class="stat-card glass hover-lift warning-card">
+                            <div class="stat-title">Overdue Tasks</div>
+                            <div class="stat-value warning" id="p-overdue">0</div>
+                        </div>
+                    </div>
+
+                    <div class="details-grid">
+                        <div class="detail-card glass">
+                            <h3>Most Active Members</h3>
+                            <ul class="activity-list" id="p-active-members">
+                                <!-- Populated by JS -->
+                            </ul>
+                        </div>
+                        <div class="detail-card glass">
+                            <h3>Items to Report</h3>
+                            <ul class="task-list alert-list" id="p-reports">
+                                <!-- Populated by JS -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Create Project Modal -->
+    <div id="create-project-modal" class="modal-overlay" onclick="handleModalOverlayClick(event)">
+        <div class="modal-container glass">
+            <!-- Step 1: Input Form -->
+            <div id="modal-form-step" class="modal-step">
+                <div class="modal-header">
+                    <div class="modal-icon">🚀</div>
+                    <h2>Create New Project</h2>
+                    <p class="modal-subtitle">Enter your project details — the MCP AI Agent will enhance them automatically.</p>
+                </div>
+                <form id="create-project-form" onsubmit="handleCreateProject(event)">
+                    <div class="form-group">
+                        <label for="project-title">Project Title</label>
+                        <input 
+                            type="text" 
+                            id="project-title" 
+                            placeholder="e.g. mobile app redesign" 
+                            required 
+                            autocomplete="off"
+                        />
+                    </div>
+                    <div class="form-group">
+                        <label for="project-description">Description</label>
+                        <textarea 
+                            id="project-description" 
+                            rows="4" 
+                            placeholder="Describe your project goals, scope, and key deliverables..."
+                        ></textarea>
+                    </div>
+                    <div class="form-group">
+                        <div class="ai-build-card glass">
+                            <div class="ai-build-info">
+                                <span class="ai-build-title">✨ Build with AI</span>
+                                <span class="ai-build-sub">Refines title & expands your description into full detail</span>
+                            </div>
+                            <button type="button" id="build-with-ai-btn" class="btn btn-ai-build" onclick="handleBuildWithAI(event)">
+                                <span class="btn-text">Enhance with AI</span>
+                                <span class="btn-spinner" style="display:none;"></span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="project-priority">Priority</label>
+                        <select id="project-priority">
+                            <option value="LOW">🟢 Low</option>
+                            <option value="MEDIUM" selected>🟡 Medium</option>
+                            <option value="HIGH">🟠 High</option>
+                            <option value="CRITICAL">🔴 Critical</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-ghost" onclick="closeCreateProjectModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="submit-create-btn">
+                            <span class="btn-text">Create with MCP</span>
+                            <span class="btn-spinner" style="display:none;"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Step 2: MCP Result Comparison -->
+            <div id="modal-result-step" class="modal-step" style="display:none;">
+                <div class="modal-header">
+                    <div class="modal-icon">✅</div>
+                    <h2>Project Created!</h2>
+                    <p class="modal-subtitle">The MCP AI Agent enhanced your project details. See the comparison below.</p>
+                </div>
+                <div class="comparison-container">
+                    <div class="comparison-column">
+                        <div class="comparison-label">Your Original Input</div>
+                        <div class="comparison-card glass">
+                            <div class="comparison-field">
+                                <span class="field-label">Title</span>
+                                <span class="field-value" id="original-title"></span>
+                            </div>
+                            <div class="comparison-field">
+                                <span class="field-label">Description</span>
+                                <span class="field-value field-description" id="original-description"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="comparison-arrow">
+                        <div class="arrow-line"></div>
+                        <div class="arrow-badge">MCP</div>
+                        <div class="arrow-line"></div>
+                    </div>
+                    <div class="comparison-column">
+                        <div class="comparison-label mcp-label">MCP Enhanced Output</div>
+                        <div class="comparison-card glass mcp-card">
+                            <div class="comparison-field">
+                                <span class="field-label">Title</span>
+                                <span class="field-value mcp-highlight" id="mcp-title"></span>
+                            </div>
+                            <div class="comparison-field">
+                                <span class="field-label">Description</span>
+                                <span class="field-value field-description mcp-highlight" id="mcp-description"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-ghost" onclick="closeCreateProjectModal()">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="resetCreateProjectModal()">Create Another</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Work Time Modal -->
+    <div id="log-time-modal" class="modal-overlay" onclick="handleLogTimeModalOverlayClick(event)">
+        <div class="modal-container glass">
+            <div class="modal-header">
+                <div class="modal-icon">⏱️</div>
+                <h2>Log Work Time</h2>
+                <p class="modal-subtitle">Record actual hours worked on a task. Updates member workload and project analytics automatically.</p>
+            </div>
+            <form id="log-time-form" onsubmit="handleLogTime(event)">
+                <div class="form-group">
+                    <label for="log-member-select">Team Member</label>
+                    <select id="log-member-select" required>
+                        <option value="">Select Member...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="log-task-select">Task</label>
+                    <select id="log-task-select" required>
+                        <option value="">Select Task...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="log-hours-input">Hours Worked</label>
+                    <input type="number" id="log-hours-input" step="0.5" min="0.5" max="24" placeholder="e.g. 3.5" required />
+                </div>
+                <div class="form-group">
+                    <label for="log-desc-input">Work Description (Optional)</label>
+                    <textarea id="log-desc-input" rows="3" placeholder="Brief notes on what was accomplished..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-ghost" onclick="closeLogTimeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="submit-log-time-btn">
+                        <span class="btn-text">Submit Log</span>
+                        <span class="btn-spinner" style="display:none;"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js?v=3"></script>
+</body>
+</html>
+

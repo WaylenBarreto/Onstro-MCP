@@ -11,6 +11,7 @@ class MockRepository(BaseRepository):
     def __init__(self) -> None:
         self.projects: list[dict[str, Any]] = []
         self.tasks: list[dict[str, Any]] = []
+        self.time_logs: list[dict[str, Any]] = []
         self.members: list[dict[str, Any]] = [
             {"id": 1, "name": "Alice", "email": "alice@company.com", "role": "Project Manager", "skills": ["planning", "risk", "communication"], "availability": 0.8, "max_weekly_hours": 40, "current_workload": 26},
             {"id": 2, "name": "Bob", "email": "bob@company.com", "role": "Backend Developer", "skills": ["python", "api", "database", "security"], "availability": 0.9, "max_weekly_hours": 40, "current_workload": 28},
@@ -126,3 +127,28 @@ class MockRepository(BaseRepository):
                 self.tasks[idx]["updated_at"] = datetime.now().isoformat()
                 return copy.deepcopy(self.tasks[idx])
         return None
+
+    async def log_time(
+        self, task_id: int, member_id: int, hours_logged: float, description: str | None = None
+    ) -> dict[str, Any]:
+        new_id = max((tl["id"] for tl in self.time_logs), default=0) + 1
+        entry = {
+            "id": new_id,
+            "task_id": task_id,
+            "member_id": member_id,
+            "hours_logged": hours_logged,
+            "description": description or "",
+            "logged_at": datetime.now().isoformat(),
+        }
+        self.time_logs.append(entry)
+        return copy.deepcopy(entry)
+
+    async def list_time_logs(
+        self, task_id: int | None = None, member_id: int | None = None
+    ) -> list[dict[str, Any]]:
+        logs = self.time_logs
+        if task_id is not None:
+            logs = [tl for tl in logs if tl["task_id"] == task_id]
+        if member_id is not None:
+            logs = [tl for tl in logs if tl["member_id"] == member_id]
+        return copy.deepcopy(logs)

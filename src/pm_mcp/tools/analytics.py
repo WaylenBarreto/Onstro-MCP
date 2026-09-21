@@ -3,65 +3,57 @@ from __future__ import annotations
 from typing import Any
 
 from pm_mcp.api.pm_client import PMApiClientError
-from pm_mcp.config import get_app_settings
 from pm_mcp.engines.dependency_engine import DependencyEngine
 from pm_mcp.engines.duplicate_engine import DuplicateEngine
 from pm_mcp.engines.risk_engine import RiskEngine
 from pm_mcp.engines.schedule_engine import ScheduleEngine
 from pm_mcp.engines.workload_engine import WorkloadEngine
-from pm_mcp.repositories.mock_repository import MockRepository
+from pm_mcp.repositories.base import BaseRepository
 
 
 class AnalyticsTools:
-    def __init__(self, repository: MockRepository | None = None):
+    def __init__(self, repository: BaseRepository) -> None:
         self.repository = repository
-        self.settings = get_app_settings()
 
     async def analyze_dependencies(self, *, project_id: int) -> dict[str, Any]:
-        if self.settings.mock_mode:
-            project = await self.repository.get_project(project_id)
-            tasks = await self.repository.list_tasks(project_id=project_id)
-            return {"success": True, **DependencyEngine.analyze(project_id, tasks)}
-        return {"success": True, "message": "Not implemented for remote API mode"}
+        tasks = await self.repository.list_tasks(project_id=project_id)
+        return {"success": True, **DependencyEngine.analyze(project_id, tasks)}
 
     async def analyze_project_risks(self, *, project_id: int) -> dict[str, Any]:
-        if self.settings.mock_mode:
-            project = await self.repository.get_project(project_id)
-            tasks = await self.repository.list_tasks(project_id=project_id)
-            members = await self.repository.list_team_members()
-            return {"success": True, **RiskEngine.analyze(project_id, project, tasks, members)}
-        return {"success": True, "message": "Not implemented for remote API mode"}
+        project = await self.repository.get_project(project_id)
+        if not project:
+            return {"success": False, "error": {"code": "PROJECT_NOT_FOUND", "message": f"Project {project_id} not found."}}
+        tasks = await self.repository.list_tasks(project_id=project_id)
+        members = await self.repository.list_team_members()
+        return {"success": True, **RiskEngine.analyze(project_id, project, tasks, members)}
 
-    async def analyze_team_workload(self, *, project_id: int | None = None, team: list[dict[str, Any]] | None = None) -> dict[str, Any]:
-        if self.settings.mock_mode:
-            members = await self.repository.list_team_members()
-            tasks = await self.repository.list_tasks(project_id=project_id)
-            summary = WorkloadEngine.summarize_workload(members, tasks)
-            return {"success": True, **summary}
-        return {"success": True, "message": "Not implemented for remote API mode"}
+    async def analyze_team_workload(self, *, project_id: int | None = None) -> dict[str, Any]:
+        members = await self.repository.list_team_members()
+        tasks = await self.repository.list_tasks(project_id=project_id)
+        summary = WorkloadEngine.summarize_workload(members, tasks)
+        return {"success": True, **summary}
 
     async def rebalance_project_workload(self, *, project_id: int, dry_run: bool = True) -> dict[str, Any]:
         tasks = await self.repository.list_tasks(project_id=project_id)
         members = await self.repository.list_team_members()
-        overloaded = [member for member in members if any(task.get("assignee_id") == member["id"] for task in tasks)]
-        proposals = []
+        overloaded = [m for m in members if any(t.get("assignee_id") == m["id"] for t in tasks)]
+        proposals: list[dict[str, Any]] = []
         if dry_run:
-            return {"success": True, "dry_run": True, "project_id": project_id, "recommendations": proposals, "overloaded_members": [m["id"] for m in overloaded]}
+            return {"success": True, "dry_run": True, "project_id": project_id,
+                    "recommendations": proposals, "overloaded_members": [m["id"] for m in overloaded]}
         return {"success": True, "dry_run": False, "project_id": project_id, "recommendations": proposals}
 
     async def analyze_schedule(self, *, project_id: int) -> dict[str, Any]:
-        if self.settings.mock_mode:
-            project = await self.repository.get_project(project_id)
-            tasks = await self.repository.list_tasks(project_id=project_id)
-            members = await self.repository.list_team_members()
-            return {"success": True, **ScheduleEngine.analyze(project_id, project, tasks, members)}
-        return {"success": True, "message": "Not implemented for remote API mode"}
+        project = await self.repository.get_project(project_id)
+        if not project:
+            return {"success": False, "error": {"code": "PROJECT_NOT_FOUND", "message": f"Project {project_id} not found."}}
+        tasks = await self.repository.list_tasks(project_id=project_id)
+        members = await self.repository.list_team_members()
+        return {"success": True, **ScheduleEngine.analyze(project_id, project, tasks, members)}
 
     async def detect_duplicate_tasks(self, *, project_id: int) -> dict[str, Any]:
-        if self.settings.mock_mode:
-            tasks = await self.repository.list_tasks(project_id=project_id)
-            return {"success": True, "duplicates": DuplicateEngine.detect(project_id, tasks)}
-        return {"success": True, "message": "Not implemented for remote API mode"}
+        tasks = await self.repository.list_tasks(project_id=project_id)
+        return {"success": True, "duplicates": DuplicateEngine.detect(project_id, tasks)}
 
 
 def register_analytics_tools(mcp, repository):

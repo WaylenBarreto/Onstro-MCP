@@ -4,7 +4,7 @@ Version: 0.1.0
 Summary: AI Project Management MCP server for C# project management platforms
 Requires-Python: >=3.11
 Description-Content-Type: text/markdown
-Requires-Dist: mcp>=1.0.0
+Requires-Dist: mcp<3.0.0,>=2.0.0
 Requires-Dist: fastapi>=0.111.0
 Requires-Dist: httpx>=0.27.0
 Requires-Dist: pydantic>=2.7.0
@@ -12,6 +12,8 @@ Requires-Dist: pydantic-settings>=2.4.0
 Requires-Dist: python-dotenv>=1.0.0
 Requires-Dist: pytest>=8.0.0
 Requires-Dist: pytest-asyncio>=0.23.0
+Requires-Dist: groq>=0.9.0
+Requires-Dist: uvicorn>=0.29.0
 
 # AI Project Manager MCP Server
 
@@ -90,6 +92,8 @@ LOG_LEVEL=INFO
 
 Mock mode is enabled by default via the environment configuration. It uses the in-memory repository and allows the service to be exercised without the C# backend.
 
+### Start the MCP server
+
 ```bash
 export MOCK_MODE=true
 python -m pm_mcp.server
@@ -98,9 +102,28 @@ python -m pm_mcp.server
 On Windows PowerShell:
 
 ```powershell
+cd "C:\Users\Admin\Desktop\Onstro MCP"
+.\.venv\Scripts\Activate.ps1
 $env:MOCK_MODE="true"
-python -m pm_mcp.server
+py -m pm_mcp.server
 ```
+
+### See the response from a tool call
+
+Because this is an MCP stdio server, the response is printed by the caller, not by the server process itself. You can directly invoke the project tool from Python to see the returned payload.
+
+```powershell
+cd "C:\Users\Admin\Desktop\Onstro MCP"
+.\.venv\Scripts\python.exe -c "import asyncio; from pm_mcp.tools.projects import ProjectTools; from pm_mcp.repositories.mock_repository import MockRepository; async def main(): tools = ProjectTools(MockRepository()); result = await tools.create_project(name='Mobile App Launch', priority='HIGH', owner_id=1); print(result); asyncio.run(main())"
+```
+
+Example output:
+
+```python
+{'success': True, 'project': {'id': 1, 'name': 'Mobile App Launch', 'description': 'Plan and deliver the Mobile App Launch initiative with clear scope, milestones, ownership, and measurable outcomes. Priority: HIGH.', 'priority': 'HIGH', 'owner_id': 1}}
+```
+
+If you provide a description yourself, it is used as-is. If you omit it, the project tool now auto-generates a description from the topic name.
 
 ## Connecting to the C# API
 

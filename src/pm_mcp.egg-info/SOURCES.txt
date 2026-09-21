@@ -10,6 +10,8 @@ src/pm_mcp.egg-info/SOURCES.txt
 src/pm_mcp.egg-info/dependency_links.txt
 src/pm_mcp.egg-info/requires.txt
 src/pm_mcp.egg-info/top_level.txt
+src/pm_mcp/ai/__init__.py
+src/pm_mcp/ai/groq_client.py
 src/pm_mcp/api/pm_client.py
 src/pm_mcp/engines/assignment_engine.py
 src/pm_mcp/engines/dependency_engine.py
@@ -22,8 +24,10 @@ src/pm_mcp/models/reports.py
 src/pm_mcp/models/team.py
 src/pm_mcp/repositories/base.py
 src/pm_mcp/repositories/mock_repository.py
+src/pm_mcp/repositories/sqlite_repository.py
 src/pm_mcp/tools/analytics.py
 src/pm_mcp/tools/assignment.py
+src/pm_mcp/tools/insights.py
 src/pm_mcp/tools/planning.py
 src/pm_mcp/tools/projects.py
 src/pm_mcp/tools/reporting.py
