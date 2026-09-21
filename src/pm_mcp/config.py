@@ -12,6 +12,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class AppSettings:
     pm_api_base_url: str = "http://localhost:5000/api"
     pm_api_key: str = ""
+    pm_tenant_id: str = ""
+    pm_app_id: str = ""
     pm_api_timeout: int = 30
     pm_api_retries: int = 3
     mock_mode: bool = True
@@ -24,6 +26,8 @@ class Settings(BaseSettings):
 
     pm_api_base_url: str = Field(default="http://localhost:5000/api", alias="PM_API_BASE_URL")
     pm_api_key: SecretStr | None = Field(default=None, alias="PM_API_KEY")
+    pm_tenant_id: str = Field(default="", alias="PM_TENANT_ID")
+    pm_app_id: str = Field(default="", alias="PM_APP_ID")
     pm_api_timeout: int = Field(default=30, alias="PM_API_TIMEOUT")
     pm_api_retries: int = Field(default=3, alias="PM_API_RETRIES")
     mock_mode: bool = Field(default=True, alias="MOCK_MODE")
@@ -56,9 +60,12 @@ def get_app_settings() -> AppSettings:
     return AppSettings(
         pm_api_base_url=settings.pm_api_base_url,
         pm_api_key=settings.api_key_value,
+        pm_tenant_id=settings.pm_tenant_id,
+        pm_app_id=settings.pm_app_id,
         pm_api_timeout=settings.pm_api_timeout,
         pm_api_retries=settings.pm_api_retries,
         mock_mode=settings.mock_mode,
         log_level=settings.log_level,
         groq_api_key=settings.groq_api_key_value,
     )
+

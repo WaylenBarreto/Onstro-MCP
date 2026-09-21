@@ -21,10 +21,12 @@ class PMApiClientError(RuntimeError):
 
 
 class PMApiClient:
-    def __init__(self, base_url: str | None = None, api_key: str | None = None, timeout: int = 30, retries: int = 3):
+    def __init__(self, base_url: str | None = None, api_key: str | None = None, tenant_id: str | None = None, app_id: str | None = None, timeout: int = 30, retries: int = 3):
         settings = get_app_settings()
         self.base_url = (base_url or settings.pm_api_base_url).rstrip("/")
         self.api_key = api_key if api_key is not None else settings.pm_api_key
+        self.tenant_id = tenant_id if tenant_id is not None else settings.pm_tenant_id
+        self.app_id = app_id if app_id is not None else settings.pm_app_id
         self.timeout = timeout or settings.pm_api_timeout
         self.retries = retries or settings.pm_api_retries
         self._client = httpx.AsyncClient(timeout=self.timeout)
@@ -37,6 +39,11 @@ class PMApiClient:
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
+        if self.tenant_id:
+            headers["X-TenantId"] = self.tenant_id
+        if self.app_id:
+            headers["X-AppId"] = self.app_id
+
 
         last_exc: Exception | None = None
         for attempt in range(1, self.retries + 1):
