@@ -58,6 +58,40 @@ class ProjectTools:
         desc = await ask_groq(prompt, max_tokens=200)
         return " ".join(desc.split())
 
+    @staticmethod
+    async def _generate_initial_tasks(name: str, description: str) -> list[dict[str, Any]]:
+        """Ask Groq (or fallback) to generate actionable initial breakdown tasks for a project."""
+        prompt = (
+            f"You are a Senior Project Manager.\n"
+            f"Project Title: {name}\n"
+            f"Project Scope: {description}\n\n"
+            f"Generate 4 to 5 clear, actionable initial tasks for this project.\n"
+            f"For each task, provide:\n"
+            f"- 'title': task title (concise)\n"
+            f"- 'priority': HIGH, MEDIUM, or LOW\n"
+            f"- 'estimated_hours': floating point estimate (e.g. 6.0, 12.5)\n\n"
+            f"Respond ONLY with a valid JSON array of task objects. Example:\n"
+            f"[{{\"title\": \"Architecture & Design Spec\", \"priority\": \"HIGH\", \"estimated_hours\": 12.0}}]"
+        )
+        try:
+            from pm_mcp.ai.groq_client import ask_groq_json
+            tasks_data = await ask_groq_json(prompt)
+            if isinstance(tasks_data, list) and len(tasks_data) > 0:
+                return tasks_data
+            elif isinstance(tasks_data, dict) and "tasks" in tasks_data and isinstance(tasks_data["tasks"], list):
+                return tasks_data["tasks"]
+        except Exception as exc:
+            logger.warning("Groq AI task generation failed, using fallback breakdown: %s", exc)
+
+        clean_name = " ".join(str(name).strip().split()) or "Project"
+        return [
+            {"title": f"Scope Definition & Requirements for {clean_name}", "priority": "HIGH", "estimated_hours": 8.0},
+            {"title": "Architecture Design & Tech Stack Setup", "priority": "HIGH", "estimated_hours": 16.0},
+            {"title": "Implementation of Core Mechanics & Business Logic", "priority": "MEDIUM", "estimated_hours": 24.0},
+            {"title": "Quality Assurance, Integration Testing & Polish", "priority": "MEDIUM", "estimated_hours": 12.0},
+            {"title": "Final Rollout, Documentation & Deployment", "priority": "LOW", "estimated_hours": 8.0},
+        ]
+
     async def create_project(self, *, name: str, description: str | None = None, priority: str = "MEDIUM", start_date: str | None = None, due_date: str | None = None, owner_id: int | None = None) -> dict[str, Any]:
         normalized_description = description.strip() if isinstance(description, str) else description
         # MCP enrichment: emoji prefix + title-case
@@ -79,7 +113,36 @@ class ProjectTools:
             "owner_id": owner_id,
         }
         project = await self.repository.create_project(payload)
-        return {"success": True, "project": project}
+
+        # Auto-generate and allocate initial tasks
+        created_tasks = []
+        try:
+            initial_tasks = await self._generate_initial_tasks(
+                name=name,
+                description=normalized_description
+            )
+            members = await self.repository.get_team_members()
+            member_ids = [m["id"] for m in members] if members else [1]
+            
+            for idx, task_data in enumerate(initial_tasks):
+                assignee_id = member_ids[idx % len(member_ids)] if member_ids else None
+                task_payload = {
+                    "project_id": project["id"],
+                    "title": task_data.get("title", f"Initial Task {idx+1}"),
+                    "description": f"Initial breakdown task generated and allocated by Onstro AI Agent for {name}.",
+                    "priority": task_data.get("priority", "MEDIUM"),
+                    "estimated_hours": float(task_data.get("estimated_hours", 8.0)),
+                    "assignee_id": assignee_id,
+                    "status": "TODO"
+                }
+                t = await self.repository.create_task(task_payload)
+                created_tasks.append(t)
+        except Exception as exc:
+            logger.warning("Auto task allocation failed for project %s: %s", project["id"], exc)
+
+        project["tasks"] = created_tasks
+        return {"success": True, "project": project, "tasks": created_tasks}
+
 
     async def get_project(self, *, project_id: int) -> dict[str, Any]:
         project = await self.repository.get_project(project_id)
